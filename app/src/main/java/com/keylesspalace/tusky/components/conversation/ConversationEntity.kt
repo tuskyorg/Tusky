@@ -77,7 +77,8 @@ data class ConversationStatusEntity(
         val expanded: Boolean,
         val collapsible: Boolean,
         val collapsed: Boolean,
-        val poll: Poll?
+        val poll: Poll?,
+        val repliesCount: Int
 
 ) {
     /** its necessary to override this because Spanned.equals does not work as expected  */
@@ -156,7 +157,8 @@ data class ConversationStatusEntity(
                 application = null,
                 pinned = false,
                 poll = poll,
-                card = null)
+                card = null,
+                repliesCount = 0)
     }
 }
 
@@ -178,7 +180,8 @@ fun Status.toEntity() =
                 false,
                 shouldTrimStatus(content),
                 true,
-                poll
+                poll,
+                repliesCount
         )
 
 

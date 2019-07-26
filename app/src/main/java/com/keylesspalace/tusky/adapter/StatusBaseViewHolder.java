@@ -16,6 +16,7 @@ import android.widget.ToggleButton;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -82,6 +83,10 @@ public abstract class StatusBaseViewHolder extends RecyclerView.ViewHolder {
     private TextView pollDescription;
     private Button pollButton;
 
+    private TextView countReplies;
+    private TextView countFavorites;
+    private TextView countReposts;
+
     private PollAdapter pollAdapter;
 
     private boolean useAbsoluteTime;
@@ -134,6 +139,10 @@ public abstract class StatusBaseViewHolder extends RecyclerView.ViewHolder {
         pollOptions = itemView.findViewById(R.id.status_poll_options);
         pollDescription = itemView.findViewById(R.id.status_poll_description);
         pollButton = itemView.findViewById(R.id.status_poll_button);
+
+        countReplies = itemView.findViewById(R.id.countReplies);
+        countReposts = itemView.findViewById(R.id.countReposts);
+        countFavorites = itemView.findViewById(R.id.countFavorites);
 
         pollAdapter = new PollAdapter();
         pollOptions.setAdapter(pollAdapter);
@@ -323,6 +332,12 @@ public abstract class StatusBaseViewHolder extends RecyclerView.ViewHolder {
     private void setReblogged(boolean reblogged) {
         this.reblogged = reblogged;
         reblogButton.setChecked(reblogged);
+        if (reblogged) {
+            countReposts.setTextColor(countReposts.getResources().getColor(R.color.tusky_blue));
+        }
+        else {
+            countReposts.setTextColor(ThemeUtils.getColor(reblogButton.getContext(), R.attr.status_inactive_counter_colour));
+        }
     }
 
     // This should only be called after setReblogged, in order to override the tint correctly.
@@ -360,6 +375,12 @@ public abstract class StatusBaseViewHolder extends RecyclerView.ViewHolder {
     protected void setFavourited(boolean favourited) {
         this.favourited = favourited;
         favouriteButton.setChecked(favourited);
+        if (favourited) {
+            countFavorites.setTextColor(countFavorites.getResources().getColor(R.color.tusky_orange));
+        }
+        else {
+            countFavorites.setTextColor(ThemeUtils.getColor(favouriteButton.getContext(), R.attr.status_inactive_counter_colour));
+        }
     }
 
     protected void setMediaPreviews(final List<Attachment> attachments, boolean sensitive,
@@ -663,6 +684,16 @@ public abstract class StatusBaseViewHolder extends RecyclerView.ViewHolder {
             // fetches another one from its delegate because it checks that it's set so we remove it
             // and let RecyclerView ask for a new delegate.
             itemView.setAccessibilityDelegate(null);
+
+            setupCounters(status);
+
+            // Update interaction counters when preference state changes
+            PreferenceManager.getDefaultSharedPreferences(itemView.getContext()).registerOnSharedPreferenceChangeListener((sharedPreferences, key) -> {
+                if (key.equals("showCounters")) {
+                    setupCounters(status);
+                }
+            });
+
         } else {
             if (payloads instanceof List)
                 for (Object item : (List) payloads) {
@@ -672,6 +703,32 @@ public abstract class StatusBaseViewHolder extends RecyclerView.ViewHolder {
                 }
 
         }
+    }
+
+    private void setupCounters(StatusViewData.Concrete status) {
+
+        if(PreferenceManager.getDefaultSharedPreferences(countReposts.getContext()).getBoolean("showCounters", false)) {
+            
+            countReplies.setVisibility(View.VISIBLE);
+            countFavorites.setVisibility(View.VISIBLE);
+            countReposts.setVisibility(View.VISIBLE);
+
+            if (countFavorites != null)
+                countFavorites.setText(status.getFavouritesCount() > 0 ? String.format(Locale.getDefault(), "%d", status.getFavouritesCount()) : "");
+
+            if (countReposts != null)
+                countReposts.setText(status.getReblogsCount() > 0 ? String.format(Locale.getDefault(), "%d", status.getReblogsCount()) : "");
+
+            if (countReplies != null)
+                countReplies.setText(status.getRepliesCount() > 0 ? String.format(Locale.getDefault(), "%d", status.getRepliesCount()) : "");
+        }
+        else {
+
+            countReplies.setVisibility(View.INVISIBLE);
+            countFavorites.setVisibility(View.INVISIBLE);
+            countReposts.setVisibility(View.INVISIBLE);
+        }
+
     }
 
 
