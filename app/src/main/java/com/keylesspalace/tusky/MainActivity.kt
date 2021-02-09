@@ -68,6 +68,7 @@ import com.keylesspalace.tusky.interfaces.ActionButtonActivity
 import com.keylesspalace.tusky.interfaces.ReselectableFragment
 import com.keylesspalace.tusky.pager.MainPagerAdapter
 import com.keylesspalace.tusky.settings.PrefKeys
+import com.keylesspalace.tusky.service.StreamingService
 import com.keylesspalace.tusky.util.*
 import com.mikepenz.iconics.IconicsDrawable
 import com.mikepenz.iconics.typeface.library.googlematerial.GoogleMaterial
@@ -215,12 +216,6 @@ class MainActivity : BottomSheetActivity(), ActionButtonActivity, HasAndroidInje
 
         setupTabs(showNotificationTab)
 
-        // Setup push notifications
-        if (NotificationHelper.areNotificationsEnabled(this, accountManager)) {
-            NotificationHelper.enablePullNotifications(this)
-        } else {
-            NotificationHelper.disablePullNotifications(this)
-        }
         eventHub.events
                 .observeOn(AndroidSchedulers.mainThread())
                 .autoDispose(this, Lifecycle.Event.ON_DESTROY)
@@ -232,6 +227,13 @@ class MainActivity : BottomSheetActivity(), ActionButtonActivity, HasAndroidInje
                             unreadAnnouncementsCount--
                             updateAnnouncementsBadge()
                         }
+                        is PreferenceChangedEvent -> {
+                            when(event.preferenceKey) {
+                                PrefKeys.LIVE_NOTIFICATIONS -> {
+                                    initPullNotifications()
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -240,6 +242,21 @@ class MainActivity : BottomSheetActivity(), ActionButtonActivity, HasAndroidInje
             deleteStaleCachedMedia(applicationContext.getExternalFilesDir("Tusky"))
         }
         draftWarning()
+    }
+
+    private fun initPullNotifications() {
+        if (NotificationHelper.areNotificationsEnabled(this, accountManager)) {
+            if(accountManager.areNotificationsStreamingEnabled()) {
+                StreamingService.startStreaming(this)
+                NotificationHelper.disablePullNotifications(this)
+            } else {
+                StreamingService.stopStreaming(this)
+                NotificationHelper.enablePullNotifications(this)
+            }
+        } else {
+            StreamingService.stopStreaming(this)
+            NotificationHelper.disablePullNotifications(this)
+        }
     }
 
     override fun onResume() {
@@ -618,9 +635,7 @@ class MainActivity : BottomSheetActivity(), ActionButtonActivity, HasAndroidInje
                         draftHelper.deleteAllDraftsAndAttachmentsForAccount(activeAccount.id)
                         removeShortcut(this, activeAccount)
                         val newAccount = accountManager.logActiveAccountOut()
-                        if (!NotificationHelper.areNotificationsEnabled(this, accountManager)) {
-                            NotificationHelper.disablePullNotifications(this)
-                        }
+                        initPullNotifications()
                         val intent = if (newAccount == null) {
                             LoginActivity.getIntent(this, false)
                         } else {
@@ -657,6 +672,8 @@ class MainActivity : BottomSheetActivity(), ActionButtonActivity, HasAndroidInje
 
         accountManager.updateActiveAccount(me)
         NotificationHelper.createNotificationChannelsForAccount(accountManager.activeAccount!!, this)
+
+        initPullNotifications()
 
         // Show follow requests in the menu, if this is a locked account.
         if (me.locked && mainDrawer.getDrawerItem(DRAWER_ITEM_FOLLOW_REQUESTS) == null) {

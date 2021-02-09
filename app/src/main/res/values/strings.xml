@@ -611,4 +611,11 @@
     <string name="drafts_failed_loading_reply">Failed loading Reply information</string>
     <string name="draft_deleted">Draft deleted</string>
     <string name="drafts_toot_reply_removed">The Toot you drafted a reply to has been removed</string>
+
+    <string name="streaming_notification_name">Live notifications</string>
+    <string name="streaming_notification_description">Running live notifications for: </string>
+    <string name="pref_title_other">Other</string>
+    <string name="pref_title_live_notifications">Live notifications</string>
+    <string name="pref_summary_live_notifications">May slightly increase power consumption</string>
+
 </resources>
